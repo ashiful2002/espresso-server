@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tbipbix.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+console.log(uri);
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -30,7 +31,7 @@ async function run() {
     // const movies = database.collection("movies");
 
     const coffeeCollection = client.db("coffeeDB").collection("coffees");
-
+    // read
     app.get("/coffees", async (req, res) => {
       // const cursor = coffeeCollection.find();
       // const result = await cursor.toArray();
@@ -39,7 +40,7 @@ async function run() {
 
       res.send(result);
     });
-
+    //  post
     app.post("/coffees", async (req, res) => {
       const newCoffee = req.body;
       console.log(newCoffee);
@@ -50,8 +51,41 @@ async function run() {
 
     app.get("/coffees/:id", async (req, res) => {
       const id = req.params.id;
+      //  one may use query to filter to better understanding
       const query = { _id: new ObjectId(id) };
       const result = await coffeeCollection.findOne(query);
+      res.send(result);
+    });
+    // update one data
+    // app.put("/coffees/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const filter = { _id: new ObjectId(id) };
+    //   const options = { upsert: true };
+    //   const updatedCofee = req.body;
+    //   const updateDoc = {
+    //     $set: updatedCofee,
+    //   };
+    //   const result = await coffeeCollection.updateOne(
+    //     filter,
+    //     updateDoc,
+    //   );
+    //   res.send(result)
+    // });
+
+    // update
+    app.put("/coffees/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedCofee = req.body;
+      const updatedDoc = {
+        $set: { updatedCofee },
+      };
+      const result = await coffeeCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
       res.send(result);
     });
 
