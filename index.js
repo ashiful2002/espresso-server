@@ -1,16 +1,17 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
 const cors = require("cors");
-const app = express();
-const port = process.env.PORT || 3000;
 require("dotenv").config();
 
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// MongoDB URI
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tbipbix.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-console.log(uri);
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -24,93 +25,122 @@ async function run() {
   try {
     await client.connect();
 
-    // Connect to the "sample_mflix" database and
-    //   access its "movies" collection
+    const db = client.db("coffeeDB");
+    const coffeeCollection = db.collection("coffees");
+    const usersCollection = db.collection("users");
 
-    // const database = client.db("sample_mflix");
-    // const movies = database.collection("movies");
-
-    const coffeeCollection = client.db("coffeeDB").collection("coffees");
-    // read
+    // Coffees GET
     app.get("/coffees", async (req, res) => {
-      // const cursor = coffeeCollection.find();
-      // const result = await cursor.toArray();
-
       const result = await coffeeCollection.find().toArray();
-
       res.send(result);
     });
-    //  post
+
+    // Coffees POST
     app.post("/coffees", async (req, res) => {
       const newCoffee = req.body;
-      console.log(newCoffee);
       const result = await coffeeCollection.insertOne(newCoffee);
       res.send(result);
     });
-    // update
 
+    // Coffees GET by ID
     app.get("/coffees/:id", async (req, res) => {
       const id = req.params.id;
-      //  one may use query to filter to better understanding
-      const query = { _id: new ObjectId(id) };
-      const result = await coffeeCollection.findOne(query);
+      const result = await coffeeCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
-    // update one data
-    // app.put("/coffees/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const filter = { _id: new ObjectId(id) };
-    //   const options = { upsert: true };
-    //   const updatedCofee = req.body;
-    //   const updateDoc = {
-    //     $set: updatedCofee,
-    //   };
-    //   const result = await coffeeCollection.updateOne(
-    //     filter,
-    //     updateDoc,
-    //   );
-    //   res.send(result)
-    // });
 
-    // update
+    // Coffees PUT (Update)
     app.put("/coffees/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const updatedCofee = req.body;
-      const updatedDoc = {
-        $set: { updatedCofee },
-      };
+      const updatedCoffee = req.body;
       const result = await coffeeCollection.updateOne(
-        filter,
-        updatedDoc,
-        options
+        { _id: new ObjectId(id) },
+        { $set: updatedCoffee },
+        { upsert: true }
       );
       res.send(result);
     });
 
-    // delete
+    // Coffees DELETE
     app.delete("/coffees/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await coffeeCollection.deleteOne(query);
-
+      const result = await coffeeCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
+    // get users
+
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // ✅ USERS POST (Create User)
+    app.post("/users", async (req, res) => {
+      try {
+        const userProfile = req.body;
+        console.log("Received User:", userProfile);
+
+        const result = await usersCollection.insertOne(userProfile);
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error inserting user:", error);
+        res.status(500).send({ error: "Failed to insert user" });
+      }
+    });
+
+    // delete user
+
+    app.delete("/users/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await usersCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    });
+
+    // update specific user
+
+    app.patch("/users", async (req, res) => {
+      console.log(req.body);
+      const signInInfo = req.body;
+      const { email, lastSignInTime } = signInInfo;
+      const filter = { email: email };
+      const updatedDoc = {
+        $set: {
+          lastSignInTime: lastSignInTime,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // Optional GET for testing
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Test Ping
     await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    console.log("✅ Connected to MongoDB successfully!");
   } finally {
+    // Optional: Leave empty to keep server running
   }
 }
 run().catch(console.dir);
 
+// Root
 app.get("/", (req, res) => {
-  res.send("coffee server is getting hot!");
+  res.send("☕ Coffee server is hot!");
 });
 
 app.listen(port, () => {
-  console.log(`coffee server is running on port ${port}`);
+  console.log(`🚀 Server is running on port ${port}`);
 });
